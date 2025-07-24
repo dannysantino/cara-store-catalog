@@ -1,8 +1,8 @@
-CREATE DATABASE IF NOT EXISTS carastoremini;
+CREATE DATABASE IF NOT EXISTS carastore_catalog;
 
-USE carastoremini;
+USE carastore_catalog;
 
-GRANT ALL ON carastoremini.* TO 'test_user'@'%';
+GRANT ALL ON carastore_catalog.* TO 'carastore_admin'@'%';
 
 FLUSH PRIVILEGES;
 
