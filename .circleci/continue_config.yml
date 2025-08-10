@@ -1,0 +1,127 @@
+version: 2.1
+
+parameters:
+  run-server-jobs:
+    type: boolean
+    default: false
+  run-client-jobs:
+    type: boolean
+    default: false
+
+executors:
+  node-exec:
+    docker:
+      - image: cimg/node:22.17
+
+commands:
+  installdeps:
+    description: "Install dependencies"
+    parameters:
+      directory:
+        type: string
+    steps:
+      - checkout:
+          path: ~/project
+      - restore_cache:
+          keys:
+            - v1-<< parameters.directory >>-deps-{{ checksum "package.json" }}-{{ checksum "package-lock.json" }}
+            - v1-<< parameters.directory >>-deps-{{ checksum "package.json" }}
+            - v1-<< parameters.directory >>-deps-
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: v1-<< parameters.directory >>-deps-{{ checksum "package.json" }}-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+
+jobs:
+  build-client:
+    executor: node-exec
+    working_directory: ~/project/client
+    steps:
+      - installdeps:
+          directory: client
+      - run:
+          name: Build client app
+          command: npm run build
+
+  test-client:
+    executor: node-exec
+    working_directory: ~/project/client
+    steps:
+      - installdeps:
+          directory: client
+      - run:
+          name: Run client tests
+          command: npm test
+
+  test-server:
+    docker:
+      - image: cimg/node:22.17
+      - image: cimg/mysql:8.0
+        environment:
+          MYSQL_ROOT_PASSWORD: djs0_32
+    working_directory: ~/project/server
+    steps:
+      - installdeps:
+          directory: server
+      - run:
+          name: Wait for MySQL
+          command: dockerize -wait tcp://localhost:3306 -timeout 1m
+      - run:
+          name: Install MySQL client
+          command: |
+            sudo apt-get update
+            sudo apt-get install default-mysql-client
+      - run:
+          name: Set up database
+          command: |
+            mysql -h 127.0.0.1 -u root -pdjs0_32 -e "CREATE USER '$MYSQL_USER'@'%' IDENTIFIED WITH mysql_native_password BY '$MYSQL_PASSWORD'"
+            mysql -h 127.0.0.1 -u root -pdjs0_32 < db/init.sql
+      - run:
+          name: Run server tests
+          command: npm test
+  publish-server:
+    docker:
+      - image: cimg/base:current
+    working_directory: ~/project/server
+    steps:
+      - checkout:
+          path: ~/project
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Set image tag
+          command: |
+            IMAGE_TAG=$(jq -r '.version' package.json)
+            echo "export IMAGE_TAG=$IMAGE_TAG" >> $BASH_ENV
+            echo "IMAGE_TAG: $IMAGE_TAG"
+            source $BASH_ENV
+      - run:
+          name: Build production image
+          command: |
+            docker build -t $DOCKERHUB_USERNAME/dynamic-config:$IMAGE_TAG --target prod .
+      - run:
+          name: Authenticate, tag, and push image to Docker Hub
+          command: |
+            echo "$DOCKERHUB_PASSWORD" | docker login -u $DOCKERHUB_USERNAME --password-stdin
+            docker tag $DOCKERHUB_USERNAME/dynamic-config:$IMAGE_TAG $DOCKERHUB_USERNAME/dynamic-config:latest
+            docker push $DOCKERHUB_USERNAME/dynamic-config:$IMAGE_TAG
+            docker push $DOCKERHUB_USERNAME/dynamic-config:latest
+
+workflows:
+  test-and-publish-server:
+    when: << pipeline.parameters.run-server-jobs >>
+    jobs:
+      - test-server
+      - publish-server:
+          requires:
+            - test-server
+  build-and-test-client:
+    when: << not pipeline.parameters.run-client-jobs >>
+    jobs:
+      - build-client
+      - test-client:
+          requires:
+            - build-client

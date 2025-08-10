@@ -1,0 +1,18 @@
+version: 2.1
+
+setup: true
+
+orbs:
+  path-filtering: circleci/path-filtering@2.0.1
+
+workflows:
+  filter-path:
+    jobs:
+      - path-filtering/filter:
+          name: detect-modified-directories
+          mapping: |
+            server/.* run-server-jobs true
+            client/.* run-client-jobs true
+            .circleci/.* run-server-jobs true
+            .circleci/.* run-client-jobs true
+          base-revision: dynamic_config
