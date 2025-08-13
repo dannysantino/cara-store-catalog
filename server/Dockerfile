@@ -2,7 +2,7 @@ FROM node:22.17 AS base
 
 WORKDIR /usr/src/app
 
-EXPOSE 8080
+EXPOSE 5000
 
 FROM base AS dev
 

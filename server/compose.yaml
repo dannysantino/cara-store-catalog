@@ -33,7 +33,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
-      - "8080:8080"
+      - "5000:5000"
     depends_on:
       mysql-db:
         condition: service_healthy
