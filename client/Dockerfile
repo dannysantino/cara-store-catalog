@@ -3,6 +3,10 @@ ARG NGINX_VERSION=alpine3.21
 
 FROM node:${NODE_VERSION} AS builder
 
+ARG VITE_API_URL
+
+ENV VITE_API_URL=${VITE_API_URL}
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -24,8 +28,8 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 COPY --chown=nginx:nginx --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 3000
+EXPOSE 80
 
-ENTRYPOINT [ "nginx", "-c", "/etc/nginx/nginx.conf" ]
+ENTRYPOINT ["nginx", "-c", "/etc/nginx/nginx.conf"]
 
 CMD [ "-g", "daemon off;" ]
