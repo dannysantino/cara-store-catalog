@@ -16,7 +16,7 @@ const Add = () => {
     const handleSubmit = async e => {
         e.preventDefault();
         try {
-            await axios.post(`${import.meta.env.VITE_REACT_APP_API_URL}/products`, product);
+            await axios.post(`${import.meta.env.VITE_API_URL}/products`, product);
             navigate("/");
         } catch (err) {
             console.error(err);

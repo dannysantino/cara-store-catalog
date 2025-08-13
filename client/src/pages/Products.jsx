@@ -8,7 +8,7 @@ const Products = () => {
 
     const handleDelete = async id => {
         try {
-            await axios.delete(`${import.meta.env.VITE_REACT_APP_API_URL}/products/${id}`);
+            await axios.delete(`${import.meta.env.VITE_API_URL}/products/${id}`);
             window.location.reload();
         } catch (err) {
             console.error(err);
@@ -18,7 +18,7 @@ const Products = () => {
     useEffect(() => {
         (async function () {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_REACT_APP_API_URL}/products`);
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/products`);
                 setProducts(res.data);
             } catch (err) {
                 console.error(err);
@@ -51,7 +51,7 @@ const Products = () => {
 
             <section id="products">
                 <div className="container mb-5">
-                    <div className="row row-cols-1 row-cols-md-3 g-4">
+                    <div className="row row-cols-1 row-cols-md-3 g-4 justify-content-center">
                         {products.length === 0
                             ? <h3 className="text-center">No products available at this time. Please check back later!</h3>
                             : (
