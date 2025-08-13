@@ -2,8 +2,8 @@ services:
   nodejs-server:
     build:
       target: dev
-    image: dynamic-config:dev
-    container_name: dconfig-server-dev
+    image: carastore-server:dev
+    container_name: nodejs-server-dev
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules

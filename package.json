@@ -1,7 +1,7 @@
 {
-  "name": "dynamic-config-monorepo",
+  "name": "cara-store-catalog",
   "version": "1.0.0",
-  "description": "CircleCI dynamic configuration for a Node.js monorepo.",
+  "description": "Demo JavaScript monorepo app.",
   "main": "index.js",
   "scripts": {
     "start": "node server/server.js",
@@ -12,21 +12,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/dannysantino/dynamic-config-monorepo.git"
+    "url": "git+ssh://git@github.com/dannysantino/cara-store-catalog.git"
   },
   "keywords": [
     "circleci",
     "ci/cd",
     "monorepo",
     "node.js",
+    "e-commerce",
     "dynamic-configuration"
   ],
   "author": "Danny Santino",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/dannysantino/dynamic-config-monorepo/issues"
+    "url": "https://github.com/dannysantino/cara-store-catalog/issues"
   },
-  "homepage": "https://github.com/dannysantino/dynamic-config-monorepo#readme",
+  "homepage": "https://github.com/dannysantino/cara-store-catalog#readme",
   "devDependencies": {
     "concurrently": "^9.2.0"
   }

@@ -1,9 +1,9 @@
-name: dynamic-config-monorepo
+name: carastore-catalog
 
 services:
   mysql-db:
     image: mysql:8.0
-    container_name: mysql-container
+    container_name: mysql-db
     command: "--default-authentication-plugin=mysql_native_password"
     restart: always
     environment:

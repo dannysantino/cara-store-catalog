@@ -101,14 +101,14 @@ jobs:
       - run:
           name: Build production image
           command: |
-            docker build -t $DOCKERHUB_USERNAME/dynamic-config:$IMAGE_TAG --target prod .
+            docker build -t $DOCKERHUB_USERNAME/carastore-server:$IMAGE_TAG --target prod .
       - run:
           name: Authenticate, tag, and push image to Docker Hub
           command: |
             echo "$DOCKERHUB_PASSWORD" | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            docker tag $DOCKERHUB_USERNAME/dynamic-config:$IMAGE_TAG $DOCKERHUB_USERNAME/dynamic-config:latest
-            docker push $DOCKERHUB_USERNAME/dynamic-config:$IMAGE_TAG
-            docker push $DOCKERHUB_USERNAME/dynamic-config:latest
+            docker tag $DOCKERHUB_USERNAME/carastore-server:$IMAGE_TAG $DOCKERHUB_USERNAME/carastore-server:latest
+            docker push $DOCKERHUB_USERNAME/carastore-server:$IMAGE_TAG
+            docker push $DOCKERHUB_USERNAME/carastore-server:latest
 
 workflows:
   test-and-publish-server:
