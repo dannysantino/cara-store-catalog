@@ -4,7 +4,7 @@ const Navbar = () => {
     return (
         <nav className="navbar navbar-expand-lg bg-dark-subtle py-3">
             <div className="container">
-                <Link className="navbar-brand mb-0 h1" to="/">Cara Store Mini</Link>
+                <Link className="navbar-brand mb-0 h1" to="/">Cara Store Catalog</Link>
                 <button
                     className="navbar-toggler"
                     type="button"

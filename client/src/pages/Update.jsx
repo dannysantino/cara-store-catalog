@@ -18,7 +18,7 @@ const Update = () => {
     const handleSubmit = async e => {
         e.preventDefault();
         try {
-            await axios.put(`${import.meta.env.VITE_API_URL}/products/${productId}`, product);
+            await axios.put(`${window._env_.VITE_API_URL}/products/${productId}`, product);
             navigate("/");
         } catch (err) {
             console.error(err);
@@ -28,7 +28,7 @@ const Update = () => {
     useEffect(() => {
         (async function () {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/products`);
+                const res = await axios.get(`${window._env_.VITE_API_URL}/products`);
                 res.data.forEach(e => e.id == productId && setProduct(e));
             } catch (err) {
                 console.error(err);

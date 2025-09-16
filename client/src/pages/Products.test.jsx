@@ -70,7 +70,7 @@ describe("Products Page", () => {
 
     //     fireEvent.click(deleteButton);
 
-    //     expect(axios.delete).toHaveBeenCalledWith(`${import.meta.env.VITE_API_URL}/products/1`);
+    //     expect(axios.delete).toHaveBeenCalledWith(`${window._env_.VITE_API_URL}/products/1`);
     // });
 
     // it("throws error when fetching products fails", async () => {

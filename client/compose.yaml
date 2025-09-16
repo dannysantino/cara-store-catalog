@@ -4,12 +4,11 @@ services:
   carastore-react-client:
     build:
       context: .
-      args:
-        - VITE_API_URL
-    image: carastore-client:prod
+    image: carastore-client:dev
     container_name: react-client
     environment:
       NODE_ENV: production
+      VITE_API_URL: ${VITE_API_URL}
     ports:
       - 8080:8080
     volumes:

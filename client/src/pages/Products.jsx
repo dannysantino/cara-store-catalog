@@ -8,7 +8,7 @@ const Products = () => {
 
     const handleDelete = async id => {
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL}/products/${id}`);
+            await axios.delete(`${window._env_.VITE_API_URL}/products/${id}`);
             window.location.reload();
         } catch (err) {
             console.error(err);
@@ -18,7 +18,7 @@ const Products = () => {
     useEffect(() => {
         (async function () {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/products`);
+                const res = await axios.get(`${window._env_.VITE_API_URL}/products`);
                 setProducts(res.data);
             } catch (err) {
                 console.error(err);
