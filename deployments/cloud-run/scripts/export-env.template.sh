@@ -1,0 +1,2 @@
+export GCP_REGION=
+export BILLING_ACCOUNT_NAME=
