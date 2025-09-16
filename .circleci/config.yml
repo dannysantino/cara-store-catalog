@@ -15,4 +15,5 @@ workflows:
             client/.* run-client-jobs true
             .circleci/.* run-server-jobs true
             .circleci/.* run-client-jobs true
-          base-revision: dynamic_config
+            deployments/ecs/.* run-task-job true
+          base-revision: dev

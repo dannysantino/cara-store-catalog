@@ -7,11 +7,22 @@ parameters:
   run-client-jobs:
     type: boolean
     default: false
+  run-task-job:
+    type: boolean
+    default: false
+
+orbs:
+  gcp-cli: circleci/gcp-cli@3.2.2
+  aws-ecs: circleci/aws-ecs@7.1.0
+  aws-cli: circleci/aws-cli@5.4.1
 
 executors:
   node-exec:
     docker:
-      - image: cimg/node:22.17
+      - image: node:22.17-alpine3.22
+  base-exec:
+    docker:
+      - image: cimg/base:current-24.04
 
 commands:
   installdeps:
@@ -34,18 +45,21 @@ commands:
           key: v1-<< parameters.directory >>-deps-{{ checksum "package.json" }}-{{ checksum "package-lock.json" }}
           paths:
             - node_modules
+  get-image-tag:
+    description: "Retrieve tag for Docker image"
+    parameters:
+      directory:
+        type: string
+    steps:
+      - run:
+          name: Export version from package.json
+          command: |
+            IMAGE_TAG=$(jq -r '.version' ~/project/<< parameters.directory >>/package.json)
+            echo "export IMAGE_TAG=$IMAGE_TAG" >> $BASH_ENV
+            echo "IMAGE_TAG: $IMAGE_TAG"
+            source $BASH_ENV
 
 jobs:
-  build-client:
-    executor: node-exec
-    working_directory: ~/project/client
-    steps:
-      - installdeps:
-          directory: client
-      - run:
-          name: Build client app
-          command: npm run build
-
   test-client:
     executor: node-exec
     working_directory: ~/project/client
@@ -57,71 +71,174 @@ jobs:
           command: npm test
 
   test-server:
-    docker:
-      - image: cimg/node:22.17
-      - image: cimg/mysql:8.0
-        environment:
-          MYSQL_ROOT_PASSWORD: djs0_32
-    working_directory: ~/project/server
-    steps:
-      - installdeps:
-          directory: server
-      - run:
-          name: Wait for MySQL
-          command: dockerize -wait tcp://localhost:3306 -timeout 1m
-      - run:
-          name: Install MySQL client
-          command: |
-            sudo apt-get update
-            sudo apt-get install default-mysql-client
-      - run:
-          name: Set up database
-          command: |
-            mysql -h 127.0.0.1 -u root -pdjs0_32 -e "CREATE USER '$MYSQL_USER'@'%' IDENTIFIED WITH mysql_native_password BY '$MYSQL_PASSWORD'"
-            mysql -h 127.0.0.1 -u root -pdjs0_32 < db/init.sql
-      - run:
-          name: Run server tests
-          command: npm test
-  publish-server:
-    docker:
-      - image: cimg/base:current
+    executor: base-exec
     working_directory: ~/project/server
     steps:
       - checkout:
           path: ~/project
       - setup_remote_docker:
           docker_layer_caching: true
+      - get-image-tag:
+          directory: server
       - run:
-          name: Set image tag
+          name: Spin up containers and run server tests
           command: |
-            IMAGE_TAG=$(jq -r '.version' package.json)
-            echo "export IMAGE_TAG=$IMAGE_TAG" >> $BASH_ENV
-            echo "IMAGE_TAG: $IMAGE_TAG"
-            source $BASH_ENV
+            docker images
+            docker compose -f compose.yaml -f compose.cicd.yaml up --build -d
+            docker exec -it --user root nodejs-server-prod npm install
+            docker exec -it nodejs-server-prod npm test
       - run:
-          name: Build production image
+          name: Stop and remove containers
+          command: docker compose down -v
+            
+  build-docker-image:
+    description: Build and publish << parameters.service >> Docker image
+    parameters:
+      service:
+        type: string
+      build_context:
+        type: string
+    executor: base-exec
+    working_directory: ~/project/<< parameters.service >>
+    steps:
+      - checkout:
+          path: ~/project
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - get-image-tag:
+          directory: << parameters.service >>
+      - run:
+          name: Build << parameters.service >> image
           command: |
-            docker build -t $DOCKERHUB_USERNAME/carastore-server:$IMAGE_TAG --target prod .
+            docker build \
+              -t $DOCKERHUB_USERNAME/carastore-<< parameters.service >>:$IMAGE_TAG \
+              -t $DOCKERHUB_USERNAME/carastore-<< parameters.service >>:latest \
+              << parameters.build_context >>
       - run:
-          name: Authenticate, tag, and push image to Docker Hub
+          name: Authenticate and push image to Docker Hub
           command: |
             echo "$DOCKERHUB_PASSWORD" | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            docker tag $DOCKERHUB_USERNAME/carastore-server:$IMAGE_TAG $DOCKERHUB_USERNAME/carastore-server:latest
-            docker push $DOCKERHUB_USERNAME/carastore-server:$IMAGE_TAG
-            docker push $DOCKERHUB_USERNAME/carastore-server:latest
+            docker push -a $DOCKERHUB_USERNAME/carastore-<< parameters.service >>
+  
+  deploy-client:
+    executor: gcp-cli/default
+    steps:
+      - checkout
+      - get-image-tag:
+          directory: client
+      - gcp-cli/setup:
+          gcloud_service_key: GCLOUD_SERVICE_KEY
+          google_compute_region: GCP_REGION
+          google_project_id: GOOGLE_PROJECT_ID
+      - run:
+          name: Deploy to Google Cloud Run
+          command: |
+            IMAGE="docker.io/$DOCKERHUB_USERNAME/carastore-client:$IMAGE_TAG"
+            
+            gcloud run deploy "$SERVICE_NAME" \
+              --image "$IMAGE" \
+              --service-account "$RUNTIME_SA_EMAIL" \
+              --allow-unauthenticated \
+              --region "$GCP_REGION" \
+              --platform managed \
+              --port $CLIENT_APP_PORT \
+              --cpu 1 \
+              --memory 512Mi \
+              --min-instances 0 \
+              --max-instances 1 \
+              --set-env-vars VITE_API_URL=$VITE_API_URL
+      - run:
+          name: Verify deployment success
+          command: |
+            URL=$(gcloud run services describe "$SERVICE_NAME" \
+              --region "$GCP_REGION" \
+              --format='value(status.url)')
+            echo "[INFO] Service URL: $URL"
+            for i in {1..30}; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+              if [ "$STATUS" -eq 200 ]; then
+                echo "[SUCCESS] Deployment verified"
+                exit 0
+              fi
+              echo "[WARN] Got $STATUS, retrying in 10s... ($i/30)"
+              sleep 10
+            done
+            echo "[ERROR] Deployment verification timed out after 5 minutes"
+            exit 1
+
+  deploy-server:
+    executor: base-exec
+    working_directory: ~/project/deployments/ecs
+    steps:
+      - checkout:
+          path: ~/project
+      - get-image-tag:
+          directory: server
+      - run:
+          name: Substitute env placeholders in task definition
+          command: |
+            envsubst < templates/task-definition.template.json > task-definition.json
+      - aws-cli/setup:
+          aws_access_key_id: $AWS_ACCESS_KEY_ID
+          aws_secret_access_key: $AWS_SECRET_ACCESS_KEY
+          region: $AWS_REGION
+      - aws-ecs/update_task_definition_from_json:
+          region: $AWS_REGION
+          task_definition_json: task-definition.json
+      - aws-ecs/update_service:
+          region: $AWS_REGION
+          family: "$MY_APP_PREFIX-server"
+          service_name: "$MY_APP_PREFIX-service"
+          cluster: "$MY_APP_PREFIX-cluster"
+          create_service: true
+          desired_count: "1"
+          container_name: "nodejs-server"
+          container_port: "5000"
+          target_group: $TG_ARN
+          skip_task_definition_registration: true
+      - aws-ecs/verify_revision_is_deployed:
+          region: $AWS_REGION
+          family: "$MY_APP_PREFIX-server"
+          service_name: "$MY_APP_PREFIX-service"
+          cluster: "$MY_APP_PREFIX-cluster"
+          task_definition_arn: $CCI_ORB_AWS_ECS_REGISTERED_TASK_DFN
+          max_poll_attempts: 20
+
+  deployment-coordinator:
+    type: no-op
 
 workflows:
-  test-and-publish-server:
-    when: << pipeline.parameters.run-server-jobs >>
+  build-test-and-deploy-client:
+    when: << pipeline.parameters.run-client-jobs >>
     jobs:
-      - test-server
-      - publish-server:
+      - test-client
+      - build-docker-image:
+          name: build-client-image
+          service: client
+          build_context: .
+          requires:
+            - test-client
+      - deploy-client:
+          requires:
+            - build-client-image
+            
+  build-test-and-deploy-server:
+    when:
+      or: [<< pipeline.parameters.run-server-jobs >>, << pipeline.parameters.run-task-job >>]
+    jobs:
+      - build-docker-image:
+          name: build-server-image
+          service: server
+          build_context: --target prod .
+          filters:
+            pipeline.parameters.run-server-jobs
+      - test-server:
+          requires:
+            - build-server-image
+          filters:
+            pipeline.parameters.run-server-jobs
+      - deployment-coordinator
+      - deploy-server:
           requires:
             - test-server
-  build-and-test-client:
-    when: << not pipeline.parameters.run-client-jobs >>
-    jobs:
-      - build-client
-      - test-client:
-          requires:
-            - build-client
+            - deployment-coordinator
