@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Link } from 'react-router'
 
+import { API_URL } from '../config'
+
 const Products = () => {
     const [products, setProducts] = useState([]);
 
     const handleDelete = async id => {
         try {
-            await axios.delete(`${window._env_.VITE_API_URL}/products/${id}`);
+            await axios.delete(`${API_URL}/products/${id}`);
             window.location.reload();
         } catch (err) {
             console.error(err);
@@ -18,7 +20,7 @@ const Products = () => {
     useEffect(() => {
         (async function () {
             try {
-                const res = await axios.get(`${window._env_.VITE_API_URL}/products`);
+                const res = await axios.get(`${API_URL}/products`);
                 setProducts(res.data);
             } catch (err) {
                 console.error(err);

@@ -2,6 +2,8 @@ import axios from 'axios';
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { API_URL } from '../config'
+
 const Add = () => {
     const [product, setProduct] = useState({});
     const navigate = useNavigate();
@@ -16,7 +18,7 @@ const Add = () => {
     const handleSubmit = async e => {
         e.preventDefault();
         try {
-            await axios.post(`${window._env_.VITE_API_URL}/products`, product);
+            await axios.post(`${API_URL}/products`, product);
             navigate("/");
         } catch (err) {
             console.error(err);
