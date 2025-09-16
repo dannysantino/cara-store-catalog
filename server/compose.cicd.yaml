@@ -1,0 +1,14 @@
+services:
+  mysql-db:
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/0_init.sql
+  nodejs-server:
+    build:
+      target: prod
+    image: ${DOCKERHUB_USERNAME}/carastore-server:${IMAGE_TAG}
+    container_name: nodejs-server-prod
+    volumes: []
+    restart: always
+
+volumes:
+  mysql-data: {}

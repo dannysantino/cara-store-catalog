@@ -35,5 +35,7 @@ npm-debug.log
 **/dist
 compose.yaml
 Dockerfile
+compose.override.yaml
+compose.cicd.yaml
 LICENSE
 README.md

@@ -1,8 +1,0 @@
-services:
-  nodejs-server:
-    build:
-      target: prod
-    image: ${DOCKERHUB_USERNAME}/carastore-server:latest
-    container_name: nodejs-server-prod
-    volumes: []
-    restart: always
