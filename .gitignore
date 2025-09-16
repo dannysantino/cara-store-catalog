@@ -138,3 +138,18 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# circleci
+!.env.circleci.template
+/deployments/.env.circleci
+
+# google cloud
+/deployments/cloud-run/keys/
+/deployments/cloud-run/scripts/export-env.sh
+
+# aws
+/deployments/ecs/certs/
+/deployments/ecs/task-definition.json
+/deployments/ecs/init/user-data.txt
+/deployments/ecs/init/ecs-secrets.json
+/deployments/ecs/scripts/export-env.sh
