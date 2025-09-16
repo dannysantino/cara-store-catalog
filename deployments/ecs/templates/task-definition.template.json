@@ -1,0 +1,131 @@
+{
+    "family": "carastore-server",
+    "networkMode": "bridge",
+    "requiresCompatibilities": [
+        "EC2"
+    ],
+    "cpu": "512",
+    "memory": "512",
+    "executionRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/ecsTaskExecutionRole",
+    "containerDefinitions": [
+        {
+            "name": "mysql-db",
+            "image": "mysql:8.0",
+            "essential": true,
+            "command": [
+                "--default-authentication-plugin=mysql_native_password"
+            ],
+            "portMappings": [
+                {
+                    "containerPort": 3306,
+                    "hostPort": 3306,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment": [],
+            "secrets": [
+                {
+                    "name": "MYSQL_USER",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:MYSQL_USER::"
+                },
+                {
+                    "name": "MYSQL_PASSWORD",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:MYSQL_PASSWORD::"
+                },
+                {
+                    "name": "MYSQL_ROOT_PASSWORD",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:MYSQL_ROOT_PASSWORD::"
+                }
+            ],
+            "mountPoints": [
+                {
+                    "sourceVolume": "mysql-db-data",
+                    "containerPath": "/var/lib/mysql"
+                },
+                {
+                    "sourceVolume": "init-sql",
+                    "containerPath": "/docker-entrypoint-initdb.d",
+                    "readOnly": true
+                }
+            ],
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "mysqladmin ping -h 127.0.0.1 -u  -p"
+                ],
+                "interval": 10,
+                "timeout": 10,
+                "retries": 5,
+                "startPeriod": 30
+            },
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/carastore-db",
+                    "awslogs-region": "${AWS_REGION}",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        },
+        {
+            "name": "nodejs-server",
+            "image": "${DOCKERHUB_USERNAME}/carastore-server:${IMAGE_TAG}",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 5000,
+                    "hostPort": 5000,
+                    "protocol": "tcp"
+                }
+            ],
+            "links": [
+                "mysql-db"
+            ],
+            "environment": [],
+            "secrets": [
+                {
+                    "name": "PORT",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:PORT::"
+                },
+                {
+                    "name": "MYSQL_HOST",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:MYSQL_HOST::"
+                },
+                {
+                    "name": "MYSQL_USER",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:MYSQL_USER::"
+                },
+                {
+                    "name": "MYSQL_PASSWORD",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:MYSQL_PASSWORD::"
+                },
+                {
+                    "name": "MYSQL_DATABASE",
+                    "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:${SM_SECRET_NAME}:MYSQL_DATABASE::"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/carastore-server",
+                    "awslogs-region": "${AWS_REGION}",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ],
+    "volumes": [
+        {
+            "name": "mysql-db-data",
+            "host": {
+                "sourcePath": "/ecs/mysql-db-data"
+            }
+        },
+        {
+            "name": "init-sql",
+            "host": {
+                "sourcePath": "/ecs/init-sql"
+            }
+        }
+    ]
+}
