@@ -150,6 +150,5 @@ vite.config.ts.timestamp-*
 # aws
 /deployments/ecs/certs/
 /deployments/ecs/task-definition.json
-/deployments/ecs/init/user-data.txt
 /deployments/ecs/init/ecs-secrets.json
 /deployments/ecs/scripts/export-env.sh
