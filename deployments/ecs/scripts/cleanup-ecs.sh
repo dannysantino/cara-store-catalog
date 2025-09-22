@@ -203,9 +203,9 @@ echo "[INFO] Looking up self-signed ACM certificate..."
 CERT_ARN=$(aws acm list-certificates \
   --region "$AWS_REGION" \
   --query "CertificateSummaryList[?DomainName=='carastore.local'].CertificateArn" \
-  --output text 2>/dev/null || true)
+  --output text | tr -d '\r' | xargs | awk '{print $1}' || true)
 
-if [[ -n "$CERT_ARN" && "$CERT_ARN" != "None" ]]; then
+if [[ -n "$CERT_ARN" ]]; then
   echo "[INFO] Deleting ACM certificate: $CERT_ARN"
   aws acm delete-certificate \
     --certificate-arn "$CERT_ARN" \
